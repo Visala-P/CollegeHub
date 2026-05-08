@@ -4,6 +4,9 @@
   "description": "Backend API for College Discovery Platform",
   "main": "dist/server.js",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "ts-node --esm src/server.ts",
     "build": "tsc",
