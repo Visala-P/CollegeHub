@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'motion/react';
 import { collegeAPI, type College } from '../services/api';
-
+import { getCollegeImageUrl } from '../services/imageHelper';
 export function CollegeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();

@@ -2,21 +2,21 @@ export type CollegeCategory =
   | 'architecture'
   | 'engineering'
   | 'medical'
-  | 'management'
-  | 'law'
+  | 'technology'
   | 'arts'
-  | 'agriculture'
-  | 'pharmacy'
+  | 'degree'
   | 'university'
   | 'default';
 
-export const COLLEGE_IMAGES = {
+const COLLEGE_IMAGES: Record<CollegeCategory, string> = {
   architecture: '/src/images/Architecture.png',
   engineering: '/src/images/Engineering.png',
   medical: '/src/images/Medical.png',
   university: '/src/images/University.png',
   arts: '/src/images/arts&science.png',
   default: '/src/images/Degree.png',
+  degree: '/src/images/Degree.png',
+  technology: '/src/images/Engineering.png',
 } as const;
 
 export const getCollegeCategory = (collegeName: string): CollegeCategory => {
@@ -49,19 +49,6 @@ export const getCollegeCategory = (collegeName: string): CollegeCategory => {
   }
 
   if (
-    nameLower.includes('management') ||
-    nameLower.includes('business') ||
-    nameLower.includes('mba') ||
-    nameLower.includes('commerce')
-  ) {
-    return 'management';
-  }
-
-  if (nameLower.includes('law') || nameLower.includes('legal')) {
-    return 'law';
-  }
-
-  if (
     (nameLower.includes('arts') && nameLower.includes('science')) ||
     nameLower.includes('liberal arts') ||
     nameLower.includes('science') ||
@@ -71,21 +58,7 @@ export const getCollegeCategory = (collegeName: string): CollegeCategory => {
     return 'arts';
   }
 
-  if (
-    nameLower.includes('agriculture') ||
-    nameLower.includes('agri') ||
-    nameLower.includes('farming')
-  ) {
-    return 'agriculture';
-  }
-
-  if (
-    nameLower.includes('pharmacy') ||
-    nameLower.includes('pharma')
-  ) {
-    return 'pharmacy';
-  }
-
+  
   if (
     nameLower.includes('university') ||
     nameLower.includes('college of') ||
@@ -98,7 +71,7 @@ export const getCollegeCategory = (collegeName: string): CollegeCategory => {
 };
 
 export const getCollegeImageUrl = (collegeName: string): string => {
-  const category = getCollegeCategory(collegeName);
+  const category: CollegeCategory = getCollegeCategory(collegeName);
   return COLLEGE_IMAGES[category];
 };
 
@@ -108,13 +81,11 @@ export const getCollegeImageAlt = (collegeName: string): string => {
     architecture: 'Architecture College',
     engineering: 'Engineering College',
     medical: 'Medical College',
-    management: 'Management College',
-    law: 'Law College',
+    technology: 'Engineering College',
     arts: 'Arts & Science College',
-    agriculture: 'Agriculture College',
-    pharmacy: 'Pharmacy College',
     university: 'University',
     default: 'College',
+    degree: 'Degree College',
   };
   return categoryLabels[category];
 };
