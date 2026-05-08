@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useTheme } from '../context/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { predictorAPI, type PredictionCollege } from '../services/api';
-import { getCollegeImageUrl } from '../services/imageHelper';
+import { getCollegeImageUrl } from "../../utils/collegeImages";
 
 const EXAMS = [
   { id: 'jee-advanced', name: 'JEE Advanced' },
