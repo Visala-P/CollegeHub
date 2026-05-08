@@ -66,10 +66,16 @@ export interface College {
 }
 
 export interface PredictionCollege extends College {
-  match: 'Safe' | 'Moderate' | 'Tough';
+  match: 'Dream' | 'Reach' | 'Moderate' | 'Safe';
   probability: number;
   openingRank: number;
   closingRank: number;
+  predictedPercentile?: number;
+  tier?: string;
+  institutionType?: string;
+  confidence?: number;
+  cutoffSource?: string;
+  recommendedBranch?: string;
 }
 
 export interface Answer {
@@ -338,6 +344,12 @@ export const predictorAPI = {
   predict: (payload: {
     exam: string;
     rank: number;
+    category?: 'GENERAL' | 'OBC' | 'SC' | 'ST' | 'EWS';
+    quota?: 'AI' | 'HS';
+    gender?: 'gender-neutral' | 'female';
+    homeState?: string;
+    preferredBranch?: string;
+    maxResults?: number;
   }) =>
     makeRequest('/predictor/predict', {
       method: 'POST',
@@ -347,10 +359,16 @@ export const predictorAPI = {
       colleges: Array.isArray(response.colleges)
         ? response.colleges.map((college: any) => ({
             ...normalizeCollege(college),
-            match: college.match ?? 'Tough',
+            match: college.match ?? 'Reach',
             probability: toNumber(college.probability),
             openingRank: toNumber(college.openingRank ?? college.minRank),
             closingRank: toNumber(college.closingRank ?? college.maxRank),
+            predictedPercentile: toNumber(college.predictedPercentile),
+            tier: college.tier ?? '',
+            institutionType: college.institutionType ?? '',
+            confidence: toNumber(college.confidence),
+            cutoffSource: college.cutoffSource ?? '',
+            recommendedBranch: college.recommendedBranch ?? '',
           }))
         : [],
     })),
