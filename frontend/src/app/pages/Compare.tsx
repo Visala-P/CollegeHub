@@ -6,7 +6,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { motion, AnimatePresence } from 'motion/react';
 import { collegeAPI, type College } from '../services/api';
-import { getCollegeImageUrl } from '../services/imageHelper';
+import { getCollegeImageUrl } from "../../utils/collegeImages";
 
 export function Compare() {
   const [searchParams] = useSearchParams();
