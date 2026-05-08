@@ -91,12 +91,6 @@ export interface Question {
   answersCount?: number;
 }
 
-export interface SavedComparison {
-  id?: number;
-  colleges: College[];
-  createdAt: string;
-}
-
 const toNumber = (value: unknown) => Number(value ?? 0);
 
 const normalizeReview = (review: any): Review => ({
@@ -157,12 +151,6 @@ const normalizeQuestion = (question: any): Question => ({
   tags: Array.isArray(question.tags) ? question.tags : [],
   answers: Array.isArray(question.answers) ? question.answers.map(normalizeAnswer) : [],
   answersCount: question.answersCount != null ? toNumber(question.answersCount) : undefined,
-});
-
-const normalizeSavedComparison = (comparison: any): SavedComparison => ({
-  id: comparison.id != null ? toNumber(comparison.id) : undefined,
-  colleges: Array.isArray(comparison.colleges) ? comparison.colleges.map(normalizeCollege) : [],
-  createdAt: comparison.createdAt ?? comparison.created_at ?? '',
 });
 
 const parseJsonSafely = (rawBody: string, responseUrl: string) => {
@@ -303,21 +291,6 @@ export const compareAPI = {
       Array.isArray(response) ? response.map(normalizeCollege) : []
     );
   },
-
-  saveComparison: (collegeIds: number[]) =>
-    makeRequest('/compare/save', {
-      method: 'POST',
-      body: { collegeIds },
-    }),
-
-  getSavedComparisons: () => makeRequest('/compare/saved').then((response) =>
-    Array.isArray(response) ? response.map(normalizeSavedComparison) : []
-  ),
-
-  deleteSavedComparison: (comparisonId: number) =>
-    makeRequest(`/compare/saved/${comparisonId}`, {
-      method: 'DELETE',
-    }),
 };
 
 // Q&A APIs

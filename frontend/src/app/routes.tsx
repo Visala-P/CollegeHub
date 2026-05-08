@@ -8,7 +8,6 @@ import { Predictor } from './pages/Predictor';
 import { QA } from './pages/QA';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
-import { Saved } from './pages/Saved';
 
 export const router = createHashRouter([
   {
@@ -23,7 +22,6 @@ export const router = createHashRouter([
       { path: 'qa', Component: QA },
       { path: 'login', Component: Login },
       { path: 'register', Component: Register },
-      { path: 'saved', Component: Saved },
       {
         path: '*',
         Component: () => (

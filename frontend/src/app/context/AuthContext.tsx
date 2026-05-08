@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { authAPI, compareAPI } from '../services/api';
+import { authAPI } from '../services/api';
 
 interface User {
   id: number;
@@ -14,11 +14,8 @@ interface AuthContextType {
   register: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
   logout: () => void;
   savedColleges: string[];
-  savedComparisons: string[][];
   saveCollege: (collegeId: string) => Promise<void>;
   unsaveCollege: (collegeId: string) => Promise<void>;
-  saveComparison: (collegeIds: string[]) => Promise<void>;
-  removeComparison: (index: number) => void;
   isLoading: boolean;
   error: string | null;
 }
@@ -45,19 +42,13 @@ const safeParseUser = (value: string | null): User | null => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [savedColleges, setSavedColleges] = useState<string[]>([]);
-  const [savedComparisons, setSavedComparisons] = useState<string[][]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadSavedData = async () => {
     try {
-      const [savedCollegeList, savedComparisonList] = await Promise.all([
-        authAPI.getSavedColleges(),
-        compareAPI.getSavedComparisons(),
-      ]);
-
+      const savedCollegeList = await authAPI.getSavedColleges();
       setSavedColleges(savedCollegeList.map(college => String(college.id)));
-      setSavedComparisons(savedComparisonList.map(comparison => comparison.colleges.map(college => String(college.id))));
     } catch (err) {
       console.error('Failed to load saved data:', err);
     }
@@ -137,7 +128,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     setSavedColleges([]);
-    setSavedComparisons([]);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   };
@@ -175,25 +165,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const saveComparison = async (collegeIds: string[]) => {
-    try {
-      if (!user) {
-        throw new Error('Please login to save comparisons');
-      }
-      
-      await compareAPI.saveComparison(collegeIds.map(id => parseInt(id)));
-      setSavedComparisons([...savedComparisons, collegeIds]);
-      await loadSavedData();
-    } catch (err: any) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const removeComparison = (index: number) => {
-    setSavedComparisons(savedComparisons.filter((_, i) => i !== index));
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -202,11 +173,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         savedColleges,
-        savedComparisons,
         saveCollege,
         unsaveCollege,
-        saveComparison,
-        removeComparison,
         isLoading,
         error,
       }}

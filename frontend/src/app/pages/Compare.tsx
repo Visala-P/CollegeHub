@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { X, Plus, IndianRupee, Star, TrendingUp, MapPin, Save, Search } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { X, Plus, IndianRupee, Star, TrendingUp, MapPin, Search } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,7 +9,6 @@ import { getCollegeImageUrl } from "../../utils/collegeImages";
 
 export function Compare() {
   const [searchParams] = useSearchParams();
-  const { user, saveComparison } = useAuth();
   const { theme } = useTheme();
   const prefersReducedMotion = useReducedMotion();
   const [selectedColleges, setSelectedColleges] = useState<string[]>([]);
@@ -65,25 +63,6 @@ export function Compare() {
     setSelectedColleges(selectedColleges.filter((id) => id !== collegeId));
   };
 
-  const handleSaveComparison = async () => {
-    if (!user) {
-      alert('Please login to save comparisons');
-      return;
-    }
-
-    if (selectedColleges.length < 2) {
-      alert('Please select at least 2 colleges to save comparison');
-      return;
-    }
-
-    try {
-      await saveComparison(selectedColleges);
-      alert('Comparison saved successfully!');
-    } catch (saveError) {
-      console.error('Failed to save comparison:', saveError);
-    }
-  };
-
   const selectedCollegeData = selectedColleges
     .map((id) => allColleges.find((college) => college.id === id))
     .filter(Boolean) as College[];
@@ -100,17 +79,6 @@ export function Compare() {
               </h1>
               <p className={theme === 'dark' ? 'text-white/70' : 'text-gray-800'}>Select up to 3 colleges to compare side-by-side</p>
             </div>
-            {selectedColleges.length >= 2 && (
-              <motion.button
-                onClick={handleSaveComparison}
-                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white rounded-xl hover:shadow-lg hover:shadow-purple-500/50 transition-all font-medium"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Save className="w-4 h-4" />
-                <span>Save Comparison</span>
-              </motion.button>
-            )}
           </div>
         </motion.div>
 

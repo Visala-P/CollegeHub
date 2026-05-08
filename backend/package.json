@@ -24,12 +24,14 @@
     "express-validator": "^7.0.0",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^6.21.0",
+    "mongoose": "^8.23.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/mongoose": "^5.11.96",
     "tsx": "^4.7.0"
   }
 }

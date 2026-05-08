@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { GraduationCap, Search, Scale, Sparkles, MessageCircle, User, LogOut, BookmarkCheck, Sun, Moon } from 'lucide-react';
+import { GraduationCap, Search, Scale, Sparkles, MessageCircle, User, LogOut, Sun, Moon } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export function Layout() {
@@ -99,17 +99,6 @@ export function Layout() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                 >
-                  <Link
-                    to="/saved"
-                    className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-all ${
-                      theme === 'dark'
-                        ? 'text-white/70 hover:text-white hover:bg-white/5'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    }`}
-                  >
-                    <BookmarkCheck className="w-4 h-4" />
-                    <span className="hidden md:inline">Saved</span>
-                  </Link>
                   <div className="flex items-center space-x-2">
                     <div className={`flex items-center space-x-2 px-3 py-2 backdrop-blur-lg rounded-lg border ${
                       theme === 'dark'

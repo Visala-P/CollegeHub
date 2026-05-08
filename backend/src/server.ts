@@ -1,7 +1,8 @@
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-
+import comparisonRoutes from "./routes/comparisonRoutes.js";
+import mongoose from 'mongoose';
 dotenv.config();
 
 const app = express();
@@ -32,7 +33,10 @@ const corsOptionsDelegate = (
     callback(new Error(`Origin ${origin} is not allowed by CORS`));
   }
 };
-
+mongoose
+  .connect(process.env.MONGODB_URI as string)
+  .then(() => console.log("MongoDB Connected"))
+  .catch((err) => console.log(err));
 app.use(cors(corsOptionsDelegate));
 app.options('*', cors(corsOptionsDelegate));
 
@@ -56,7 +60,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/compare', compareRouter);
 app.use('/api/qa', qaRouter);
 app.use('/api/predictor', predictorRouter);
-
+app.use("/api/comparisons", comparisonRoutes);
 app.get(['/api', '/api/'], (req: Request, res: Response) => {
   res.json({ 
     status: 'OK', 
@@ -88,5 +92,10 @@ app.listen(PORT, () => {
   console.log(`   - GET    /api/health`);
   console.log(`========================================\n`);
 });
-
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
 export default app;
