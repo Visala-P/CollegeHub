@@ -1,11 +1,11 @@
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5001;
+const PORT = Number(process.env.PORT) || 5001;
 
 const localOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://[::1]:5173'];
 const configuredOrigins = (process.env.CORS_ORIGIN ?? '')
@@ -23,7 +23,7 @@ const isAllowedOrigin = (origin?: string) => {
 
 const corsOptionsDelegate = (
   req: Request,
-  callback: (err: Error | null, options?: { origin?: boolean; credentials?: boolean }) => void
+  callback: (err: Error | null, options?: { origin?: boolean; credentials?: boolean }) => void,
 ) => {
   const origin = req.header('Origin');
   if (isAllowedOrigin(origin ?? undefined)) {
@@ -33,10 +33,10 @@ const corsOptionsDelegate = (
   }
 };
 
-app.use(cors(corsOptionsDelegate as any));
-app.options('*', cors(corsOptionsDelegate as any));
+app.use(cors(corsOptionsDelegate));
+app.options('*', cors(corsOptionsDelegate));
 
-app.use((req: Request, res: Response, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const now = new Date().toISOString();
   console.log(`[${now}] ${req.method} ${req.originalUrl}`);
   next();
