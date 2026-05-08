@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, MapPin, IndianRupee, Star, Bookmark, BookmarkCheck, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { Search, MapPin, IndianRupee, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { motion } from 'motion/react';
 import { collegeAPI, type College } from '../services/api';
@@ -10,7 +9,6 @@ import { getCollegeImageUrl } from "../../utils/collegeImages";
 const ITEMS_PER_PAGE = 6;
 
 export function Colleges() {
-  const { user, savedColleges, saveCollege, unsaveCollege } = useAuth();
   const { theme } = useTheme();
 
   const [colleges, setColleges] = useState<College[]>([]);
@@ -113,18 +111,7 @@ export function Colleges() {
 
   const totalPages = Math.max(1, Math.ceil(totalColleges / ITEMS_PER_PAGE));
 
-  const handleSaveToggle = (collegeId: string) => {
-    if (!user) {
-      alert('Please login to save colleges');
-      return;
-    }
-
-    if (savedColleges.includes(collegeId)) {
-      void unsaveCollege(collegeId);
-    } else {
-      void saveCollege(collegeId);
-    }
-  };
+  // Save functionality removed for this page.
 
   const resetFilters = () => {
     setSearchTerm('');
@@ -262,7 +249,6 @@ export function Colleges() {
           <>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {colleges.map((college, index) => {
-                const isSaved = savedColleges.includes(college.id);
 
                 return (
                   <motion.div
@@ -297,14 +283,7 @@ export function Colleges() {
                               {college.location}
                             </div>
                           </div>
-                          <motion.button
-                            onClick={() => handleSaveToggle(college.id)}
-                            className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'}`}
-                            whileHover={{ scale: 1.1, rotate: 15 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            {isSaved ? <BookmarkCheck className="w-5 h-5 text-cyan-400" /> : <Bookmark className={`w-5 h-5 ${theme === 'dark' ? 'text-white/50' : 'text-gray-500'}`} />}
-                          </motion.button>
+                          {/* Save button removed */}
                         </div>
 
                         <div className="flex items-center justify-between mb-4">
