@@ -1,0 +1,50 @@
+/* Dark Mode Colors */
+[data-theme="dark"] {
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-tertiary: rgba(255, 255, 255, 0.5);
+  --bg-primary: rgba(255, 255, 255, 0.1);
+  --bg-secondary: rgba(255, 255, 255, 0.05);
+  --border-primary: rgba(255, 255, 255, 0.2);
+  --border-secondary: rgba(255, 255, 255, 0.1);
+}
+
+/* Light Mode Colors */
+[data-theme="light"] {
+  --text-primary: rgba(17, 24, 39, 1);
+  --text-secondary: rgba(55, 65, 81, 1);
+  --text-tertiary: rgba(107, 114, 128, 1);
+  --bg-primary: rgba(255, 255, 255, 1);
+  --bg-secondary: rgba(249, 250, 251, 1);
+  --border-primary: rgba(229, 231, 235, 1);
+  --border-secondary: rgba(243, 244, 246, 1);
+}
+
+/* Utility classes */
+.text-theme-primary {
+  color: var(--text-primary);
+}
+
+.text-theme-secondary {
+  color: var(--text-secondary);
+}
+
+.text-theme-tertiary {
+  color: var(--text-tertiary);
+}
+
+.bg-theme-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-theme-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.border-theme-primary {
+  border-color: var(--border-primary);
+}
+
+.border-theme-secondary {
+  border-color: var(--border-secondary);
+}
