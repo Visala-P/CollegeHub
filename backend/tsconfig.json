@@ -10,9 +10,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "moduleResolution": "NodeNext",
-    "types": ["node"],
-    "typeRoots": ["./node_modules/@types"]
+    "moduleResolution": "NodeNext"
   },
   "include": ["src"],
   "exclude": ["node_modules"]
