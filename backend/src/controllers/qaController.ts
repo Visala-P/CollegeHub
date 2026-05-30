@@ -1,64 +1,71 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types/index.js';
+import { connectDatabase, getCollections, nextSequence } from '../db/config.js';
 
-interface Answer {
+interface AnswerDocument {
   id: number;
-  questionId: number;
-  authorId: number | null;
+  question_id: number;
+  author_id: number | null;
   author: string;
   content: string;
   date: string;
   upvotes: number;
 }
 
-interface Question {
+interface QuestionDocument {
   id: number;
-  authorId: number | null;
+  author_id: number | null;
   author: string;
   title: string;
   content: string;
   date: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   tags: string[];
-  answers: Answer[];
+  answers: AnswerDocument[];
 }
 
-const questions: Question[] = [];
-let questionIdCounter = 1;
-let answerIdCounter = 1;
+const sortAnswers = (answers: AnswerDocument[]) => [...answers].sort((left, right) => right.upvotes - left.upvotes);
 
-const sortAnswers = (answers: Answer[]) => [...answers].sort((a, b) => b.upvotes - a.upvotes);
+const formatQuestion = (question: QuestionDocument) => ({
+  id: question.id,
+  author: question.author,
+  title: question.title,
+  content: question.content,
+  date: question.date,
+  tags: question.tags ?? [],
+  answers: sortAnswers(question.answers ?? []),
+  answersCount: question.answers?.length ?? 0,
+});
+
+const parsePositiveInteger = (value: unknown, fallback: number) => {
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
 
 export const getQuestions = async (req: AuthRequest, res: Response) => {
   try {
-    const { page = '1', limit = '10' } = req.query;
+    await connectDatabase();
 
-    const pageNumber = Number.parseInt(page as string, 10);
-    const pageSize = Number.parseInt(limit as string, 10);
-    const offset = (pageNumber - 1) * pageSize;
+    const page = parsePositiveInteger(req.query.page, 1);
+    const limit = parsePositiveInteger(req.query.limit, 10);
+    const offset = (page - 1) * limit;
 
-    const total = questions.length;
-    const result = questions
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(offset, offset + pageSize)
-      .map(q => ({
-        id: q.id,
-        author: q.author,
-        title: q.title,
-        content: q.content,
-        date: q.date,
-        tags: q.tags,
-        answers: sortAnswers(q.answers),
-        answersCount: q.answers.length,
-      }));
+    const { questions } = getCollections();
+    const total = await questions.countDocuments();
+    const docs = await questions
+      .find({})
+      .sort({ created_at: -1 })
+      .skip(offset)
+      .limit(limit)
+      .toArray();
 
     res.json({
-      data: result,
+      data: docs.map((question) => formatQuestion(question as QuestionDocument)),
       total,
-      page: pageNumber,
-      limit: pageSize,
-      pages: Math.ceil(total / pageSize),
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
     });
   } catch (error) {
     console.error('Get questions error:', error);
@@ -68,23 +75,17 @@ export const getQuestions = async (req: AuthRequest, res: Response) => {
 
 export const getQuestionById = async (req: AuthRequest, res: Response) => {
   try {
+    await connectDatabase();
+
     const questionId = Number.parseInt(req.params.id, 10);
-    const question = questions.find(q => q.id === questionId);
+    const { questions } = getCollections();
+    const question = await questions.findOne({ id: questionId });
 
     if (!question) {
       return res.status(404).json({ message: 'Question not found' });
     }
 
-    res.json({
-      id: question.id,
-      author: question.author,
-      title: question.title,
-      content: question.content,
-      date: question.date,
-      tags: question.tags,
-      answers: sortAnswers(question.answers),
-      answersCount: question.answers.length,
-    });
+    res.json(formatQuestion(question as QuestionDocument));
   } catch (error) {
     console.error('Get question by ID error:', error);
     res.status(500).json({ message: 'Failed to fetch question' });
@@ -99,34 +100,28 @@ export const createQuestion = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Title and content are required' });
     }
 
+    await connectDatabase();
+    const { questions } = getCollections();
     const now = new Date().toISOString();
-    const question: Question = {
-      id: questionIdCounter++,
-      authorId: req.user?.id || null,
+
+    const question: QuestionDocument = {
+      id: await nextSequence('questions'),
+      author_id: req.user?.id || null,
       author: req.user?.email || 'Anonymous',
       title,
       content,
       date: now,
-      createdAt: now,
-      updatedAt: now,
+      created_at: now,
+      updated_at: now,
       tags: Array.isArray(tags) ? tags : [],
       answers: [],
     };
 
-    questions.push(question);
+    await questions.insertOne(question);
 
     res.status(201).json({
       message: 'Question created successfully',
-      question: {
-        id: question.id,
-        author: question.author,
-        title: question.title,
-        content: question.content,
-        date: question.date,
-        tags: question.tags,
-        answers: [],
-        answersCount: 0,
-      },
+      question: formatQuestion(question),
     });
   } catch (error) {
     console.error('Create question error:', error);
@@ -143,25 +138,32 @@ export const answerQuestion = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Question ID and content are required' });
     }
 
-    const question = questions.find(q => q.id === questionIdNumber);
+    await connectDatabase();
+    const { questions } = getCollections();
+    const question = await questions.findOne({ id: questionIdNumber });
 
     if (!question) {
       return res.status(404).json({ message: 'Question not found' });
     }
 
     const now = new Date().toISOString();
-    const answer: Answer = {
-      id: answerIdCounter++,
-      questionId: questionIdNumber,
-      authorId: req.user?.id || null,
+    const answer: AnswerDocument = {
+      id: await nextSequence('answers'),
+      question_id: questionIdNumber,
+      author_id: req.user?.id || null,
       author: req.user?.email || 'Anonymous',
       content,
       date: now,
       upvotes: 0,
     };
 
-    question.answers.push(answer);
-    question.updatedAt = now;
+    await questions.updateOne(
+      { id: questionIdNumber },
+      {
+        $push: { answers: answer },
+        $set: { updated_at: now },
+      },
+    );
 
     res.status(201).json({
       message: 'Answer posted successfully',
@@ -182,16 +184,21 @@ export const upvoteAnswer = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Answer ID is required' });
     }
 
-    let updatedAnswer: Answer | null = null;
+    await connectDatabase();
+    const { questions } = getCollections();
 
-    for (const question of questions) {
-      const answer = question.answers.find(a => a.id === answerIdNumber);
-      if (answer) {
-        answer.upvotes++;
-        updatedAnswer = answer;
-        break;
-      }
+    const updateResult = await questions.updateOne(
+      { 'answers.id': answerIdNumber },
+      { $inc: { 'answers.$[answer].upvotes': 1 } },
+      { arrayFilters: [{ 'answer.id': answerIdNumber }] },
+    );
+
+    if (updateResult.matchedCount === 0) {
+      return res.status(404).json({ message: 'Answer not found' });
     }
+
+    const updatedQuestion = await questions.findOne({ 'answers.id': answerIdNumber });
+    const updatedAnswer = updatedQuestion?.answers?.find((answer) => answer.id === answerIdNumber);
 
     if (!updatedAnswer) {
       return res.status(404).json({ message: 'Answer not found' });
@@ -209,32 +216,28 @@ export const upvoteAnswer = async (req: AuthRequest, res: Response) => {
 
 export const searchQuestions = async (req: AuthRequest, res: Response) => {
   try {
+    await connectDatabase();
+
     const { query } = req.query;
 
     if (!query || typeof query !== 'string') {
       return res.status(400).json({ message: 'Search query is required' });
     }
 
-    const queryLower = query.toLowerCase();
-    const result = questions
-      .filter(q => 
-        q.title.toLowerCase().includes(queryLower) || 
-        q.content.toLowerCase().includes(queryLower)
-      )
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 20)
-      .map(q => ({
-        id: q.id,
-        author: q.author,
-        title: q.title,
-        content: q.content,
-        date: q.date,
-        tags: q.tags,
-        answers: sortAnswers(q.answers),
-        answersCount: q.answers.length,
-      }));
+    const { questions } = getCollections();
+    const docs = await questions
+      .find({
+        $or: [
+          { title: { $regex: query, $options: 'i' } },
+          { content: { $regex: query, $options: 'i' } },
+          { tags: { $elemMatch: { $regex: query, $options: 'i' } } },
+        ],
+      })
+      .sort({ created_at: -1 })
+      .limit(20)
+      .toArray();
 
-    res.json(result);
+    res.json(docs.map((question) => formatQuestion(question as QuestionDocument)));
   } catch (error) {
     console.error('Search questions error:', error);
     res.status(500).json({ message: 'Failed to search questions' });

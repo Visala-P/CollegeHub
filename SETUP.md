@@ -6,8 +6,8 @@ Complete guide to set up the College Discovery Platform for local development.
 
 Before starting, ensure you have:
 
-- **Node.js** >= 16.x (https://nodejs.org)
-- **PostgreSQL** >= 12.x (https://www.postgresql.org)
+- **Node.js** >= 20.x (https://nodejs.org)
+- **MongoDB** 7.x or Docker Desktop for the bundled Mongo container
 - **npm** or **pnpm** (comes with Node.js)
 - **Git** (https://git-scm.com)
 - **VS Code** (recommended, https://code.visualstudio.com)
@@ -17,7 +17,7 @@ Before starting, ensure you have:
 ```bash
 node --version        # Should be >= v16.x
 npm --version         # Should be >= 8.x
-psql --version        # Should be >= 12.x
+mongod --version      # Optional if you are running MongoDB locally
 git --version         # Should show git version
 ```
 
@@ -39,19 +39,15 @@ cd college-discovery
 npm run install-all
 ```
 
-### Step 3: Create PostgreSQL Database
+### Step 3: Start MongoDB
 
-Open PostgreSQL and run:
-
-```sql
-CREATE DATABASE college_discovery_platform;
-```
-
-Or via terminal:
+If you have Docker Desktop installed, start the bundled MongoDB container from the repo root:
 
 ```bash
-createdb college_discovery_platform
+npm run mongo:up
 ```
+
+If you prefer a local MongoDB installation, make sure `mongod` is running on `127.0.0.1:27017`.
 
 ### Step 4: Configure Environment
 
@@ -60,11 +56,8 @@ Create `.env` file in `backend` directory:
 ```env
 PORT=5000
 NODE_ENV=development
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=college_discovery_platform
-DB_USER=postgres
-DB_PASSWORD=postgres
+MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_DB=college_discovery_platform
 JWT_SECRET=your_super_secret_jwt_key_here_min_32_chars
 JWT_EXPIRE=7d
 CORS_ORIGIN=http://localhost:5173
@@ -102,8 +95,8 @@ npm run dev:backend
 ### Step 7: Access Application
 
 - Frontend: http://localhost:5173
-- Backend API: https://collegehub-6ed8.onrender.com/api (production) or http://localhost:5000/api (local)
-- Database: localhost:5432
+- Backend API: https://collegehub-6ed8.onrender.com/api (production) or http://localhost:5001/api (local)
+- Database: mongodb://127.0.0.1:27017
 
 ---
 
@@ -135,25 +128,19 @@ Or use the convenience script:
 npm run install-all
 ```
 
-### Step 3: PostgreSQL Setup
+### Step 3: MongoDB Setup
 
 #### On Windows
 
-1. Open pgAdmin (comes with PostgreSQL)
-2. Right-click "Databases" → "Create" → "Database"
-3. Name: `college_discovery_platform`
-4. Click "Save"
+1. Open MongoDB Compass or your preferred MongoDB client
+2. Verify MongoDB is listening on port `27017`
+3. Run `npm run db:migrate` and `npm run db:seed`
 
 #### On macOS/Linux
 
 ```bash
 # Via command line
-createdb college_discovery_platform
-
-# Or in psql
-psql -U postgres
-CREATE DATABASE college_discovery_platform;
-\q
+mongosh "mongodb://127.0.0.1:27017"
 ```
 
 ### Step 4: Backend Environment Configuration
@@ -162,15 +149,12 @@ Create `backend/.env`:
 
 ```bash
 cat > backend/.env << EOF
-PORT=5000
+PORT=5001
 NODE_ENV=development
 
 # Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=college_discovery_platform
-DB_USER=postgres
-DB_PASSWORD=postgres
+MONGODB_URI=mongodb://127.0.0.1:27017
+MONGODB_DB=college_discovery_platform
 
 # JWT
 JWT_SECRET=your_super_secret_jwt_key_here_min_32_chars
@@ -184,7 +168,7 @@ FRONTEND_URL=http://localhost:5173
 EOF
 ```
 
-**Note:** Update `DB_PASSWORD` to match your PostgreSQL password.
+**Note:** Update `MONGODB_URI` if you are not using the local default.
 
 ### Step 5: Frontend Environment Configuration
 
@@ -192,7 +176,7 @@ Create `.env`:
 
 ```bash
 cat > .env << EOF
-VITE_API_BASE_URL=https://collegehub-6ed8.onrender.com/api
+VITE_API_URL=https://collegehub-6ed8.onrender.com/api
 EOF
 ```
 
@@ -252,8 +236,8 @@ npm run dev:backend
 
 You'll see:
 ```
-✅ Server is running on port 5000
-✅ Database connected: ...
+✅ Server is running on port 5001
+✅ MongoDB connected: ...
 ```
 
 ---

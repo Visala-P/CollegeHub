@@ -24,8 +24,8 @@ A production-grade REST API for the College Discovery Platform built with Expres
 
 ## Prerequisites
 
-- Node.js >= 16.x
-- MongoDB >= 6.x or a MongoDB Atlas connection string
+- Node.js >= 20.x
+- MongoDB >= 7.x or a MongoDB Atlas connection string
 - npm or pnpm
 
 ## Setup Instructions
@@ -37,12 +37,24 @@ cd backend
 npm install
 ```
 
-### 2. Configure Environment Variables
+### 2. Start MongoDB Locally
+
+If you have Docker installed, start a local MongoDB instance from the repo root:
+
+```bash
+npm run mongo:up
+```
+
+This exposes MongoDB on `mongodb://127.0.0.1:27017` and persists data in a Docker volume.
+
+If you do not use Docker, install MongoDB Community Server and make sure `mongod` is listening on port `27017`.
+
+### 3. Configure Environment Variables
 
 Create a `.env` file in the backend directory:
 
 ```env
-PORT=5000
+PORT=5001
 NODE_ENV=development
 
 # Database Configuration
@@ -62,29 +74,32 @@ FRONTEND_URL=http://localhost:5173
 
 For production deploys, set the same variables in your host dashboard and make sure `CORS_ORIGIN` and `FRONTEND_URL` match the deployed frontend URL exactly.
 
-### 3. Setup Database
+### 4. Setup Database
 
-Point `MONGODB_URI` at your local MongoDB server or MongoDB Atlas cluster, then run:
+With MongoDB running locally, initialize the schema and seed the college data:
 
 ```bash
 npm run db:migrate
-```
-
-### 4. Seed Database with Sample Data
-
-```bash
 npm run db:seed
 ```
 
-This will populate the database with 10 sample colleges and their data.
-
-### 5. Start Development Server
+### 5. Start the Backend API
 
 ```bash
 npm run dev
 ```
 
-Server will start on `http://localhost:5000` (local) or deploy to Render/similar service
+Server will start on `http://localhost:5001`.
+
+### 6. Start the ML.NET Predictor Service
+
+The prediction endpoint proxies to the ML.NET service, so start it in a second terminal after MongoDB is running:
+
+```bash
+dotnet run --project mlpredictor/CollegeHub.MLPredictor.csproj
+```
+
+Once both services are up, `GET http://127.0.0.1:5107/health` should report `ready: true` after a successful training pass.
 
 ## API Endpoints
 
@@ -175,18 +190,14 @@ Content-Type: application/json
 }
 ```
 
-## Database Schema
+### Database Schema
 
-### Tables
-- `users` - User accounts
-- `colleges` - College information
-- `college_courses` - Courses offered by colleges
-- `reviews` - Student reviews
-- `placements` - Placement statistics
-- `saved_colleges` - User's saved colleges
+### Collections
+- `users` - User accounts and saved colleges
+- `colleges` - College information and placement statistics
 - `comparisons` - User's saved comparisons
-- `questions` - Q&A forum questions
-- `answers` - Q&A forum answers
+- `questions` - Q&A forum questions and answers
+- `counters` - Sequence counters for generated ids
 
 ## Authentication
 

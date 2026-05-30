@@ -1,7 +1,7 @@
-import { Collection, Db, MongoClient } from 'mongodb';
+import { Collection, Db } from 'mongodb';
 import dotenv from 'dotenv';
 import type { Answer, College, Comparison, Placement, Question, Review, User } from '../types/index.js';
-
+import mongoose from "mongoose";
 dotenv.config();
 
 export interface MongoCollege extends College {
@@ -16,7 +16,7 @@ export interface MongoUser extends User {
   password: string;
   first_name: string;
   last_name: string;
-  savedCollegeIds: number[];
+  saved_college_ids: number[];
   created_at: string;
   updated_at: string;
 }
@@ -45,8 +45,7 @@ type DatabaseCollections = {
 const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://127.0.0.1:27017';
 const databaseName = process.env.MONGODB_DB || process.env.DB_NAME || 'college_discovery_platform';
 
-let client: MongoClient | null = null;
-let database: Db | null = null;
+let database: any = null;
 let connectPromise: Promise<Db> | null = null;
 
 function createCollections(currentDb: Db): DatabaseCollections {
@@ -65,6 +64,7 @@ async function ensureIndexes(currentDb: Db) {
   await Promise.all([
     users.createIndex({ email: 1 }, { unique: true }),
     users.createIndex({ id: 1 }, { unique: true }),
+    users.createIndex({ saved_college_ids: 1 }),
     colleges.createIndex({ id: 1 }, { unique: true }),
     colleges.createIndex({ name: 1 }),
     colleges.createIndex({ state: 1 }),
@@ -73,36 +73,40 @@ async function ensureIndexes(currentDb: Db) {
     comparisons.createIndex({ user_id: 1, created_at: -1 }),
     questions.createIndex({ id: 1 }, { unique: true }),
     questions.createIndex({ author_id: 1 }),
-    questions.createIndex({ title: 'text', content: 'text' }),
+    questions.createIndex({ title: 'text', content: 'text', tags: 'text' }),
   ]);
 }
+
 
 export async function connectDatabase() {
   if (database) {
     return database;
   }
 
-  if (!connectPromise) {
-    client = new MongoClient(mongoUri);
-    connectPromise = client
-      .connect()
-      .then((connectedClient) => {
-        database = connectedClient.db(databaseName);
-        return database;
-      })
-      .then(async (connectedDatabase) => {
-        await ensureIndexes(connectedDatabase);
-        return connectedDatabase;
-      })
-      .catch((error) => {
-        connectPromise = null;
-        throw error;
-      });
+  if (connectPromise) {
+    return connectPromise;
   }
+
+  connectPromise = mongoose
+    .connect(mongoUri, { dbName: databaseName })
+    .then(async () => {
+      database = mongoose.connection.db!;
+      console.log(`MongoDB connected: ${database.databaseName}`);
+
+      await ensureIndexes(database);
+
+      return database;
+    })
+    .catch((error) => {
+      console.error('MongoDB connection failed:', error);
+      throw error;
+    })
+    .finally(() => {
+      connectPromise = null;
+    });
 
   return connectPromise;
 }
-
 export function getDatabase() {
   if (!database) {
     throw new Error('MongoDB database has not been initialized');
@@ -112,9 +116,13 @@ export function getDatabase() {
 }
 
 export function getCollections() {
-  return createCollections(getDatabase());
-}
+  const collections = createCollections(getDatabase());
 
+  console.log("Collections initialized");
+  console.log("College collection:", collections.colleges.collectionName);
+
+  return collections;
+}
 export async function nextSequence(sequenceName: string) {
   const { counters } = getCollections();
   const result = await counters.findOneAndUpdate(
@@ -139,11 +147,7 @@ export async function resetCollections() {
 }
 
 export async function closeDatabase() {
-  if (client) {
-    await client.close();
-  }
-
-  client = null;
+  await mongoose.disconnect();
   database = null;
   connectPromise = null;
 }

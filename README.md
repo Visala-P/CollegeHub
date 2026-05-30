@@ -1,13 +1,13 @@
 
 # College Discovery Platform - MVP
 
-A production-grade full-stack web application for discovering, comparing, and selecting colleges. Built with React, Express.js, PostgreSQL, and TypeScript.
+A production-grade full-stack web application for discovering, comparing, and selecting colleges. Built with React, Express.js, MongoDB, and TypeScript.
 
 ## Quick Overview
 
 - Frontend: React 18 + React Router + Tailwind CSS + Radix UI
 - Backend: Express.js + Node.js + TypeScript
-- Database: PostgreSQL with 9 tables
+- Database: MongoDB with local Docker support
 - Auth: JWT-based authentication
 - Deployment: Vercel for the frontend and Render for the backend
 
@@ -23,32 +23,32 @@ A production-grade full-stack web application for discovering, comparing, and se
 ## Getting Started
 
 ```bash
-git clone <repo>
-cd college-discovery
-cd frontend
+npm run mongo:up
+cd backend
 npm install
-cd ../backend
-npm install
-createdb college_discovery_platform
+Copy-Item .env.example .env
+npm run build
 npm run db:migrate
 npm run db:seed
-cd ../frontend
-npm run dev:all
+npm run dev
 ```
 
-Or run them separately:
+In a second terminal, start the ML.NET predictor service:
+
+```bash
+cd backend/mlpredictor
+dotnet run
+```
+
+Then run the frontend in a third terminal:
 
 ```bash
 cd frontend
+npm install
 npm run dev
-
-cd ../backend
-npm run dev
-npm run db:migrate
-npm run db:seed
 ```
 
-Frontend runs on Vercel and backend on https://collegehub-6ed8.onrender.com/api (deployed).
+The backend uses MongoDB locally at `mongodb://127.0.0.1:27017`, and the predictor endpoint requires the ML.NET service to be running before predictions will return results.
 
 ## Documentation
 

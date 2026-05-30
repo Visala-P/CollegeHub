@@ -1,8 +1,8 @@
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import comparisonRoutes from "./routes/comparisonRoutes.js";
-import mongoose from 'mongoose';
+import { connectDatabase } from './db/config.js';
+import { seedDataIfEmpty } from './db/seed.js';
 dotenv.config();
 
 const app = express();
@@ -33,12 +33,23 @@ const corsOptionsDelegate = (
     callback(new Error(`Origin ${origin} is not allowed by CORS`));
   }
 };
-mongoose
-  .connect(process.env.MONGODB_URI as string)
-  .then(() => console.log("MongoDB Connected"))
-  .catch((err) => console.log(err));
 app.use(cors(corsOptionsDelegate));
 app.options('*', cors(corsOptionsDelegate));
+
+let databaseReady = false;
+let databaseError: string | null = null;
+
+void (async () => {
+  try {
+    await connectDatabase();
+    await seedDataIfEmpty();
+    databaseReady = true;
+    console.log('MongoDB ready');
+  } catch (error) {
+    databaseError = error instanceof Error ? error.message : String(error);
+    console.error('MongoDB initialization failed:', error);
+  }
+})();
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const now = new Date().toISOString();
@@ -58,9 +69,9 @@ const predictorRouter = (await import('./routes/predictor.js')).default;
 app.use('/api/colleges', collegesRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/compare', compareRouter);
+app.use('/api/comparisons', compareRouter);
 app.use('/api/qa', qaRouter);
 app.use('/api/predictor', predictorRouter);
-app.use("/api/comparisons", comparisonRoutes);
 app.get(['/api', '/api/'], (req: Request, res: Response) => {
   res.json({ 
     status: 'OK', 
@@ -71,7 +82,12 @@ app.get(['/api', '/api/'], (req: Request, res: Response) => {
 });
 
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'OK', message: 'College Discovery Platform API is running' });
+  res.json({
+    status: 'OK',
+    message: 'College Discovery Platform API is running',
+    databaseReady,
+    databaseError,
+  });
 });
 
 app.use((req: Request, res: Response) => {
@@ -92,10 +108,4 @@ app.listen(PORT, () => {
   console.log(`   - GET    /api/health`);
   console.log(`========================================\n`);
 });
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
 export default app;

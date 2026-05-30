@@ -1,16 +1,26 @@
 import { Response } from 'express';
 import { AuthRequest } from '../types/index.js';
-import { getCollegeById } from '../services/localCollegeData.js';
+import { connectDatabase, getCollections, nextSequence } from '../db/config.js';
 
-interface SavedComparison {
-  id: number;
-  userId: number;
-  collegeIds: string[];
-  createdAt: string;
-}
+const normalizeCollegeIds = (value: unknown) => {
+  if (!Array.isArray(value)) {
+    return [] as number[];
+  }
 
-const savedComparisons: SavedComparison[] = [];
-let comparisonIdCounter = 1;
+  return value
+    .map((collegeId) => Number.parseInt(String((collegeId as any)?.id ?? collegeId), 10))
+    .filter((collegeId) => Number.isFinite(collegeId));
+};
+
+const fetchCollegesByIds = async (collegeIds: number[]) => {
+  await connectDatabase();
+  const { colleges } = getCollections();
+
+  const documents = await colleges.find({ id: { $in: collegeIds } }).toArray();
+  const order = new Map(collegeIds.map((collegeId, index) => [collegeId, index]));
+
+  return documents.sort((left, right) => (order.get(left.id) ?? 0) - (order.get(right.id) ?? 0));
+};
 
 export const saveComparison = async (req: AuthRequest, res: Response) => {
   try {
@@ -18,27 +28,34 @@ export const saveComparison = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { collegeIds } = req.body;
+    const collegeIds = normalizeCollegeIds(req.body.collegeIds ?? req.body.colleges);
 
-    if (!collegeIds || !Array.isArray(collegeIds) || collegeIds.length < 2 || collegeIds.length > 3) {
+    if (collegeIds.length < 2 || collegeIds.length > 3) {
       return res.status(400).json({ message: 'Please select 2-3 colleges' });
     }
 
-    for (const collegeId of collegeIds) {
-      const college = getCollegeById(String(collegeId));
-      if (!college) {
-        return res.status(404).json({ message: `College ${collegeId} not found` });
+    const colleges = await fetchCollegesByIds(collegeIds);
+
+    if (colleges.length !== collegeIds.length) {
+      const foundIds = new Set(colleges.map((college) => college.id));
+      const missingCollegeId = collegeIds.find((collegeId) => !foundIds.has(collegeId));
+
+      if (missingCollegeId != null) {
+        return res.status(404).json({ message: `College ${missingCollegeId} not found` });
       }
     }
 
-    const comparison: SavedComparison = {
-      id: comparisonIdCounter++,
-      userId: req.user.id,
-      collegeIds: collegeIds.map(String),
-      createdAt: new Date().toISOString(),
+    await connectDatabase();
+    const { comparisons } = getCollections();
+
+    const comparison = {
+      id: await nextSequence('comparisons'),
+      user_id: req.user.id,
+      college_ids: collegeIds,
+      created_at: new Date().toISOString(),
     };
 
-    savedComparisons.push(comparison);
+    await comparisons.insertOne(comparison);
 
     res.json({ message: 'Comparison saved successfully', id: comparison.id });
   } catch (error) {
@@ -53,15 +70,23 @@ export const getComparisons = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const userComparisons = savedComparisons
-      .filter(c => c.userId === req.user!.id)
-      .map(c => ({
-        id: c.id,
-        colleges: c.collegeIds.map(id => getCollegeById(id)).filter(Boolean),
-        createdAt: c.createdAt,
-      }));
+    await connectDatabase();
+    const { comparisons } = getCollections();
 
-    res.json(userComparisons);
+    const userComparisons = await comparisons
+      .find({ user_id: req.user.id })
+      .sort({ created_at: -1 })
+      .toArray();
+
+    const result = await Promise.all(
+      userComparisons.map(async (comparison) => ({
+        id: comparison.id,
+        colleges: await fetchCollegesByIds(comparison.college_ids ?? []),
+        createdAt: comparison.created_at,
+      })),
+    );
+
+    res.json(result);
   } catch (error) {
     console.error('Get comparisons error:', error);
     res.status(500).json({ message: 'Failed to fetch comparisons' });
@@ -74,18 +99,16 @@ export const deleteComparison = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { id } = req.params;
-    const comparisonId = Number.parseInt(id, 10);
+    await connectDatabase();
+    const { comparisons } = getCollections();
 
-    const index = savedComparisons.findIndex(
-      c => c.id === comparisonId && c.userId === req.user!.id
-    );
+    const comparisonId = Number.parseInt(req.params.id, 10);
 
-    if (index === -1) {
+    const result = await comparisons.deleteOne({ id: comparisonId, user_id: req.user.id });
+
+    if (result.deletedCount === 0) {
       return res.status(404).json({ message: 'Comparison not found' });
     }
-
-    savedComparisons.splice(index, 1);
 
     res.json({ message: 'Comparison deleted successfully' });
   } catch (error) {
@@ -98,15 +121,16 @@ export const compareColleges = async (req: AuthRequest, res: Response) => {
   try {
     const { ids } = req.query;
 
-    if (!ids) {
+    if (!ids || typeof ids !== 'string') {
       return res.status(400).json({ message: 'College IDs are required' });
     }
 
-    const collegeIds = (ids as string).split(',').map(String);
+    const collegeIds = ids
+      .split(',')
+      .map((id) => Number.parseInt(id, 10))
+      .filter((collegeId) => Number.isFinite(collegeId));
 
-    const colleges = collegeIds
-      .map(id => getCollegeById(id))
-      .filter(Boolean);
+    const colleges = await fetchCollegesByIds(collegeIds);
 
     if (colleges.length === 0) {
       return res.status(404).json({ message: 'No valid colleges found' });

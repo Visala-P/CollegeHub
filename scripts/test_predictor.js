@@ -1,6 +1,6 @@
 (async () => {
   try {
-    const res = await fetch('http://localhost:5000/api/predictor/predict', {
+    const res = await fetch('http://localhost:5001/api/predictor/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mode: 'indian', exam: 'jee-advanced', rank: 50 }),

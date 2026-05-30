@@ -16,8 +16,9 @@ const EXAMS = [
 const CATEGORIES = ['GENERAL', 'OBC', 'SC', 'ST', 'EWS'] as const;
 const QUOTAS = ['AI', 'HS'] as const;
 const GENDERS = [
-  { id: 'gender-neutral', label: 'Gender Neutral' },
+  { id: 'male', label: 'Male' },
   { id: 'female', label: 'Female' },
+  { id: 'other', label: 'Other' },
 ];
 
 const STATES = [
@@ -51,7 +52,7 @@ export function Predictor() {
   const [rank, setRank] = useState('');
   const [category, setCategory] = useState<(typeof CATEGORIES)[number]>('GENERAL');
   const [quota, setQuota] = useState<(typeof QUOTAS)[number]>('AI');
-  const [gender, setGender] = useState<'gender-neutral' | 'female'>('gender-neutral');
+  const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [homeState, setHomeState] = useState('Any');
   const [preferredBranch, setPreferredBranch] = useState('Computer Science');
   const [maxResults, setMaxResults] = useState('30');
@@ -80,7 +81,8 @@ export function Predictor() {
       setIsLoading(true);
       setInfoMessage(null);
 
-      const response = await predictorAPI.predict({
+      const requestBody = {
+        examType: selectedExam,
         exam: selectedExam,
         rank: Number(rank),
         category,
@@ -89,7 +91,11 @@ export function Predictor() {
         homeState: homeState === 'Any' ? undefined : homeState,
         preferredBranch,
         maxResults: Number(maxResults),
-      });
+      };
+
+      console.log('Predictor request body:', requestBody);
+
+      const response = await predictorAPI.predict(requestBody);
 
       setPredictions(response.colleges);
       setInfoMessage(typeof response.message === 'string' ? response.message : null);
@@ -116,7 +122,7 @@ export function Predictor() {
     setSelectedExam('jee-main');
     setCategory('GENERAL');
     setQuota('AI');
-    setGender('gender-neutral');
+    setGender('male');
     setHomeState('Any');
     setPreferredBranch('Computer Science');
     setMaxResults('30');
@@ -203,7 +209,7 @@ export function Predictor() {
                     <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-white/90' : 'text-gray-900'}`}>Gender</label>
                     <select
                       value={gender}
-                      onChange={(event) => setGender(event.target.value as 'gender-neutral' | 'female')}
+                      onChange={(event) => setGender(event.target.value as 'male' | 'female' | 'other')}
                       className={`w-full px-3 py-2 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${theme === 'dark' ? 'bg-white/10 border border-white/20 text-white dark:text-white [&>option]:text-black' : 'bg-white border border-gray-300 text-gray-900'}`}
                     >
                       {GENDERS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}

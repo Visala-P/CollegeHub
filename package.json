@@ -1,4 +1,9 @@
 {
+  "scripts": {
+    "mongo:up": "docker compose up -d mongo",
+    "mongo:down": "docker compose down",
+    "mongo:logs": "docker compose logs -f mongo"
+  },
   "dependencies": {
     "mongodb": "^6.21.0"
   }

@@ -1,7 +1,7 @@
 const IS_GITHUB_PAGES = import.meta.env.VITE_GITHUB_PAGES === 'true';
 
 const API_BASE_URL = (() => {
-  const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+  const configuredBaseUrl = import.meta.env.VITE_API_URL?.trim() || import.meta.env.VITE_API_BASE_URL?.trim();
 
   if (configuredBaseUrl) {
     return configuredBaseUrl.replace(/\/$/, '');
@@ -196,7 +196,7 @@ const makeRequest = async (endpoint: string, options: RequestOptions = {}) => {
   const { method = 'GET', headers = {}, body } = options;
 
   if (!API_BASE_URL) {
-    throw new Error('VITE_API_BASE_URL is not configured. Set it to your deployed backend URL for GitHub Pages.');
+    throw new Error('VITE_API_URL is not configured. Set it to your deployed backend URL for GitHub Pages.');
   }
 
   const token = localStorage.getItem('token');
@@ -343,10 +343,11 @@ export const predictorAPI = {
 
   predict: (payload: {
     exam: string;
+    examType?: string;
     rank: number;
     category?: 'GENERAL' | 'OBC' | 'SC' | 'ST' | 'EWS';
     quota?: 'AI' | 'HS';
-    gender?: 'gender-neutral' | 'female';
+    gender?: 'male' | 'female' | 'other';
     homeState?: string;
     preferredBranch?: string;
     maxResults?: number;

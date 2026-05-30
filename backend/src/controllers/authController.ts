@@ -2,19 +2,7 @@ import { Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { AuthRequest } from '../types/index.js';
-
-interface InMemoryUser {
-  id: number;
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-  savedColleges: string[];
-  createdAt: string;
-}
-
-const inMemoryUsers: Map<string, InMemoryUser> = new Map();
-let userIdCounter = 1;
+import { connectDatabase, getCollections, nextSequence, type MongoUser } from '../db/config.js';
 
 const getJwtExpiresIn = (): SignOptions['expiresIn'] =>
   (process.env.JWT_EXPIRE || '7d') as SignOptions['expiresIn'];
@@ -27,24 +15,32 @@ export const register = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    if (inMemoryUsers.has(email)) {
+    await connectDatabase();
+    const { users } = getCollections();
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const existingUser = await users.findOne({ email: normalizedEmail });
+
+    if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-    
-    const user: InMemoryUser = {
-      id: userIdCounter++,
-      email,
+    const now = new Date().toISOString();
+
+    const user: MongoUser = {
+      id: await nextSequence('users'),
+      email: normalizedEmail,
       password: hashedPassword,
-      firstName: firstName || '',
-      lastName: lastName || '',
-      savedColleges: [],
-      createdAt: new Date().toISOString(),
+      first_name: firstName || '',
+      last_name: lastName || '',
+      saved_college_ids: [],
+      created_at: now,
+      updated_at: now,
     };
 
-    inMemoryUsers.set(email, user);
+    await users.insertOne(user);
 
     const token = jwt.sign(
       { id: user.id, email: user.email },
@@ -58,8 +54,8 @@ export const register = async (req: AuthRequest, res: Response) => {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.first_name,
+        lastName: user.last_name,
       },
     });
   } catch (error) {
@@ -76,7 +72,10 @@ export const login = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = inMemoryUsers.get(email);
+    await connectDatabase();
+    const { users } = getCollections();
+
+    const user = await users.findOne({ email: email.toLowerCase().trim() });
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -100,8 +99,8 @@ export const login = async (req: AuthRequest, res: Response) => {
       user: {
         id: user.id,
         email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.first_name,
+        lastName: user.last_name,
       },
     });
   } catch (error) {
@@ -116,7 +115,10 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const user = Array.from(inMemoryUsers.values()).find(u => u.id === req.user!.id);
+    await connectDatabase();
+    const { users } = getCollections();
+
+    const user = await users.findOne({ id: req.user.id });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -125,8 +127,8 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
     res.json({
       id: user.id,
       email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      firstName: user.first_name,
+      lastName: user.last_name,
     });
   } catch (error) {
     console.error('Get profile error:', error);
@@ -146,15 +148,22 @@ export const saveCollege = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'College ID is required' });
     }
 
-    const user = Array.from(inMemoryUsers.values()).find(u => u.id === req.user!.id);
+    await connectDatabase();
+    const { users } = getCollections();
+
+    const user = await users.findOne({ id: req.user.id });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (!user.savedColleges.includes(String(collegeId))) {
-      user.savedColleges.push(String(collegeId));
-    }
+    await users.updateOne(
+      { id: req.user.id },
+      {
+        $addToSet: { saved_college_ids: Number.parseInt(String(collegeId), 10) },
+        $set: { updated_at: new Date().toISOString() },
+      },
+    );
 
     res.json({ message: 'College saved successfully' });
   } catch (error) {
@@ -175,13 +184,22 @@ export const unsaveCollege = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ message: 'College ID is required' });
     }
 
-    const user = Array.from(inMemoryUsers.values()).find(u => u.id === req.user!.id);
+    await connectDatabase();
+    const { users } = getCollections();
+
+    const user = await users.findOne({ id: req.user.id });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    user.savedColleges = user.savedColleges.filter(id => id !== String(collegeId));
+    await users.updateOne(
+      { id: req.user.id },
+      {
+        $pull: { saved_college_ids: Number.parseInt(String(collegeId), 10) },
+        $set: { updated_at: new Date().toISOString() },
+      },
+    );
 
     res.json({ message: 'College unsaved successfully' });
   } catch (error) {
@@ -196,17 +214,18 @@ export const getSavedColleges = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const user = Array.from(inMemoryUsers.values()).find(u => u.id === req.user!.id);
+    await connectDatabase();
+    const { users } = getCollections();
+
+    const user = await users.findOne({ id: req.user.id });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json(user.savedColleges.map(id => ({ id })));
+    res.json((user.saved_college_ids ?? []).map((id) => ({ id })));
   } catch (error) {
     console.error('Get saved colleges error:', error);
     res.status(500).json({ message: 'Failed to fetch saved colleges' });
   }
 };
-
-export const getAllUsers = () => Array.from(inMemoryUsers.values());

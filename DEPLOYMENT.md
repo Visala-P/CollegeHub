@@ -5,8 +5,8 @@ This guide provides step-by-step instructions for deploying the College Discover
 ## Quick Summary
 
 - **Frontend**: Deploy to Vercel
-- **Backend**: Deploy to Render (with PostgreSQL)
-- **Database**: Managed PostgreSQL on Render or another hosted provider
+- **Backend**: Deploy to Render
+- **Database**: Managed MongoDB Atlas or another hosted MongoDB provider
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ git push -u origin main
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
 5. Add Environment Variable:
-   - Key: `VITE_API_BASE_URL`
+   - Key: `VITE_API_URL`
    - Value: `https://collegehub-6ed8.onrender.com/api`
 6. Click "Deploy"
 
@@ -50,7 +50,7 @@ git push -u origin main
 After backend is deployed, update:
 
 ```
-VITE_API_BASE_URL=https://collegehub-6ed8.onrender.com/api
+VITE_API_URL=https://collegehub-6ed8.onrender.com/api
 ```
 
 Push changes:
@@ -74,9 +74,9 @@ Vercel will auto-deploy the changes.
 
 ### Step 2: Configure Services
 
-1. **Create PostgreSQL Database**
-   - Click "Add" → "PostgreSQL"
-   - Railway will automatically create database variables
+1. **Create MongoDB Database**
+   - Use MongoDB Atlas or another hosted MongoDB provider
+   - Copy the connection string into `MONGODB_URI`
 
 2. **Create Node.js Service**
    - Click "Add" → "GitHub Repository"
@@ -89,15 +89,12 @@ Vercel will auto-deploy the changes.
 In Railway Project Variables:
 
 ```
-PORT=5000
+PORT=5001
 NODE_ENV=production
 
-# These are auto-set by Railway
-DB_HOST=${{Postgres.PGHOST}}
-DB_PORT=${{Postgres.PGPORT}}
-DB_NAME=${{Postgres.PGDATABASE}}
-DB_USER=${{Postgres.PGUSER}}
-DB_PASSWORD=${{Postgres.PGPASSWORD}}
+# Database
+MONGODB_URI=mongodb+srv://...
+MONGODB_DB=college_discovery_platform
 
 # Set these values
 JWT_SECRET=your_super_secret_jwt_key_min_32_chars
@@ -132,8 +129,8 @@ Or via REST API call to trigger setup endpoint (if you add one).
 ### Step 1: Create Database
 
 1. Go to [render.com](https://render.com)
-2. Click "New" → "PostgreSQL"
-3. Create database with name `college_discovery_platform`
+2. Create a MongoDB Atlas cluster or use another hosted MongoDB provider
+3. Create a database with name `college_discovery_platform`
 4. Note the connection string
 
 ### Step 2: Deploy Backend
